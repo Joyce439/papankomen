@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papan Komen Galeri Maya</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+}
+
+.container{
+    max-width:800px;
+    margin:auto;
+    background:white;
+    padding:30px;
+    border-radius:15px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.08);
+}
+
+input, textarea{
+    width:100%;
+    padding:12px;
+    margin-top:8px;
+    margin-bottom:20px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+button{
+    padding:12px 20px;
+    border:none;
+    background:#4a6fa5;
+    color:white;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.comment{
+    background:#fafafa;
+    padding:15px;
+    border-radius:10px;
+    margin-top:15px;
+    border-left:4px solid #4a6fa5;
+}
+
+.like-btn{
+    margin-top:10px;
+    background:#eee;
+    color:#333;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    display:inline-block;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🖼️ Papan Komen Galeri Maya</h1>
+
+    <form id="commentForm">
+        <label>Nama Pilihan (Optional)</label>
+        <input type="text" id="name" placeholder="Anonim">
+
+        <label>Komen / Maklum Balas *</label>
+        <textarea id="comment" required></textarea>
+
+        <label>Penilaian (1–5) *</label>
+        <input type="number" id="rating" min="1" max="5" required>
+
+        <button type="submit">Hantar</button>
+    </form>
+
+    <h2>Komen Pengunjung</h2>
+    <div id="commentsList"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    doc,
+    updateDoc,
+    increment
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* 替换成你的 Firebase config */
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const form = document.getElementById("commentForm");
+const commentsList = document.getElementById("commentsList");
+
+/* 提交评论 */
+form.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+
+    const name = document.getElementById("name").value || "AWAK (Anonim)";
+    const comment = document.getElementById("comment").value;
+    const rating = document.getElementById("rating").value;
+
+    await addDoc(collection(db,"comments"),{
+        name,
+        comment,
+        rating,
+        likes: 0,
+        createdAt: Date.now()
+    });
+
+    form.reset();
+});
+
+/* 点赞功能 */
+window.likeComment = async function(id){
+    const commentRef = doc(db,"comments",id);
+
+    await updateDoc(commentRef,{
+        likes: increment(1)
+    });
+};
+
+/* 实时读取评论 */
+const q = query(
+    collection(db,"comments"),
+    orderBy("createdAt","desc")
+);
+
+onSnapshot(q,(snapshot)=>{
+    commentsList.innerHTML = "";
+
+    snapshot.forEach((document)=>{
+        const data = document.data();
+
+        commentsList.innerHTML += `
+            <div class="comment">
+                <strong>${data.name}</strong><br>
+                ⭐ ${data.rating}/5
+                <p>${data.comment}</p>
+
+                <div class="like-btn" onclick="likeComment('${document.id}')">
+                    👍 ${data.likes || 0}
+                </div>
+            </div>
+        `;
+    });
+});
+</script>
+
+</body>
+</html>
